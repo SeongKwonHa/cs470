@@ -1,0 +1,5 @@
+python pacman.py
+python pacman.py -p AstarAgent
+python pacman.py -p BFSAgent
+python pacman.py -p AstarAgent -q
+python pacman.py -p AstarAgent --frameTime 0.02
