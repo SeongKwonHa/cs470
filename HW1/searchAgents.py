@@ -55,6 +55,7 @@ class BFSAgent(Agent):
   def __init__(self):
       self.Searching = []
       self.Visited = []
+      self.Already = []
       self.cost = 0
       self.now = 0
       self.start_x = 0
@@ -93,13 +94,29 @@ class BFSAgent(Agent):
     def back_dir(dir):
         return Directions.LEFT[Directions.LEFT[dir]]
 
-    #print("cost : %d, now : %d\n", self.cost, self.now)
-    legalMoves = gameState.getLegalActions()
+    def new_pos(dir, x, y):
+        if dir is "North": return (x, y + 1)
+        if dir is "South": return (x, y - 1)
+        if dir is "West": return (x - 1, y)
+        if dir is "East": return (x + 1, y)
+
+    # print("cost : %d, now : %d\n", self.cost, self.now)
+    legal = gameState.getLegalActions()
+    legalMoves =[ ]
+    for i in legal:
+        if i == 'East': legalMoves.append(i)
+    for i in legal:
+        if i == 'West': legalMoves.append(i)
+    for i in legal:
+        if i == 'South': legalMoves.append(i)
+    for i in legal:
+        if i == 'North': legalMoves.append(i)
     if Directions.STOP in legalMoves: legalMoves.remove(Directions.STOP)
     if back_dir(gameState.getPacmanState().configuration.direction) in legalMoves:
         legalMoves.remove(back_dir(gameState.getPacmanState().configuration.direction))
     if self.Searching == []:
         x, y = gameState.getPacmanState().configuration.getPosition()
+        self.Already.append((x, y))
         self.start_x = x
         self.start_y = y
         print((x-self.start_x,y-self.start_y))
@@ -114,9 +131,9 @@ class BFSAgent(Agent):
         self.Visited.append(-1)
         self.cost += 1
         return self.Searching[self.now]
-    #print("legal :", legalMoves)
-    #print("Searching : ", self.Searching)
-    #print("Visiting : ", self.Visited)
+    # print("legal :", legalMoves)
+    # print("Searching : ", self.Searching)
+    # print("Visiting : ", self.Visited)
     if self.Visited[self.now] == -1:
         self.cost += 1
         self.now = 0
@@ -126,31 +143,21 @@ class BFSAgent(Agent):
         return self.Searching[self.now]
     if self.Visited[self.now] == self.cost:
         x, y = gameState.getPacmanState().configuration.getPosition()
-        print((x - self.start_x, y - self.start_y))
-        data = "(%d, %d)\n" % ((x - self.start_x), (y - self.start_y))
-        self.f.write(data)
-        for dir in legalMoves:
-            self.Searching.insert(self.now+1, dir)
-            self.Visited.insert(self.now+1, self.cost+1)
-            self.now += 1
-            self.Searching.insert(self.now+1, back_dir(dir))
-            self.Visited.insert(self.now+1, self.cost)
-            self.now += 1
+        if not (x, y) in self.Already:
+            self.Already.append((x, y))
+            print((x - self.start_x, y - self.start_y))
+            data = "(%d, %d)\n" % ((x - self.start_x), (y - self.start_y))
+            self.f.write(data)
+            for dir in legalMoves:
+                if new_pos(dir, x, y) in self.Already: continue
+                self.Searching.insert(self.now+1, dir)
+                self.Visited.insert(self.now+1, self.cost+1)
+                self.now += 1
+                self.Searching.insert(self.now+1, back_dir(dir))
+                self.Visited.insert(self.now+1, self.cost)
+                self.now += 1
         self.now += 1
         return self.Searching[self.now]
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 class AstarAgent(Agent):
@@ -244,6 +251,7 @@ class Node:
     def move_cost(self):
         return 1
 
+
 def getChildren(position, maps):
     """
     Return the children that can move legally
@@ -265,7 +273,7 @@ def aStar(start, goal, maps):
     For example, if the starting point is (9, 1) and the goal point is (1, 8), you
     return the path like this.
 
-    
+
     (9, 1) <- top
     (8, 1)
 
@@ -274,10 +282,81 @@ def aStar(start, goal, maps):
     (1, 7)
     (1, 8) <- bottom
     """
-    path = util.Stack()
 
-    "*** YOUR CODE HERE ***"
+    def heuristic(pos):
+        (x, y) = pos
+        (a, b) = goal.position
+        result = abs(x - a) + abs(y - b)
+        return result
+
+
+    path = util.Stack()
+    Searching = []
+    success = False
+    Searching.append((heuristic(start.position)+0, start))
+    TempList = []
+
+
+    legal = getChildren(start, maps)
+    for i in legal:
+        i.H = heuristic(i.position)
+        i.G = 1
+        i.parent = start
+        for j in range(len(Searching)):
+            F, node = Searching[j]
+            if F >= (i.G + i.H):
+                Searching.insert(j + 1, (i.G + i.H, i))
+                break
+            if j == len(Searching) -1:
+                Searching.append((i.G + i.H,i))
+    #print(Searching)
+    while not success:
+        pri, temp = Searching[0]
+        priv = temp
+        if temp.position == goal.position:
+            goal.parent = temp.parent
+            success = True
+            continue
+        legalMoves = getChildren(temp, maps)
+        if priv.parent in legalMoves:
+            legalMoves.remove(priv.parent)
+        for i in legalMoves:
+            i.H = heuristic(i.position)
+            i.G = temp.G + 1
+            i.parent = priv
+            print(temp.position)
+            if not priv in TempList:
+                TempList.append(priv)
+            for j in range(len(Searching)):
+                F, node = Searching[j]
+                if F >= (i.G + i.H):
+                    Searching.insert(j + 1, (i.G + i.H, i))
+                    break
+                if j == len(Searching) - 1:
+                    Searching.append((i.G + i.H, i))
+        Searching.remove((pri, temp))
+        #print(Searching)
+
+
+
+
+    path_node = goal
+    while not path_node == start:
+        nodess = path_node
+        path.push(nodess)
+        path_node = nodess.parent
+        print("1: ", nodess.position)
+        #print("2: ", nodess.parent.position)
+    path.push(start)
+
+
+    print("*********finish*********\n")
+
+    #print(goal.position)
+    #print(start.position)
+    #print(heuristic(start.position))
+    #for i in legal:
+        #print( i.position)
 
     return path
-
 
