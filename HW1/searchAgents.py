@@ -18,7 +18,12 @@ class LeftTurnAgent(Agent):
   
   def getAction(self, state):
     legal = state.getLegalPacmanActions()
+    print("legal : ", legal)
     current = state.getPacmanState().configuration.direction
+    print("current :", current)
+    print("position :", state.getPacmanState().configuration.getPosition())
+    successors = [(state.generateSuccessor(0, action).getPacmanState().configuration.getPosition(), action) for action in legal]
+    print("generatesuccessor :", successors)
     if current == Directions.STOP: current = Directions.NORTH
     left = Directions.LEFT[current]
     if left in legal: return left
@@ -47,10 +52,17 @@ class BFSAgent(Agent):
   """
     Your BFS agent (question 1)
   """
-  # def __init__(self):
+  def __init__(self):
+      self.Searching = []
+      self.Visited = []
+      self.cost = 0
+      self.now = 0
+      self.start_x = 0
+      self.start_y = 0
+      self.f = open("result.txt", 'w')
+
     
   def getAction(self, gameState):
-
     """
       Returns the BFS seracing action using gamestae.getLegalActions()
       
@@ -76,10 +88,70 @@ class BFSAgent(Agent):
       
       this method is called until Pac-man reaches to goal
       return value should be one of the direction Pac-man can move ('North','South'....)
-    """
+        """
     "*** YOUR CODE HERE ***"
+    def back_dir(dir):
+        return Directions.LEFT[Directions.LEFT[dir]]
 
-    return a
+    #print("cost : %d, now : %d\n", self.cost, self.now)
+    legalMoves = gameState.getLegalActions()
+    if Directions.STOP in legalMoves: legalMoves.remove(Directions.STOP)
+    if back_dir(gameState.getPacmanState().configuration.direction) in legalMoves:
+        legalMoves.remove(back_dir(gameState.getPacmanState().configuration.direction))
+    if self.Searching == []:
+        x, y = gameState.getPacmanState().configuration.getPosition()
+        self.start_x = x
+        self.start_y = y
+        print((x-self.start_x,y-self.start_y))
+        data = "(%d, %d)\n" % ((x - self.start_x), (y - self.start_y))
+        self.f.write(data)
+        for dir in legalMoves:
+            self.Searching.append(dir)
+            self.Visited.append(self.cost+1)
+            self.Searching.append(back_dir(dir))
+            self.Visited.append(self.cost)
+        self.Searching.append(Directions.STOP)
+        self.Visited.append(-1)
+        self.cost += 1
+        return self.Searching[self.now]
+    #print("legal :", legalMoves)
+    #print("Searching : ", self.Searching)
+    #print("Visiting : ", self.Visited)
+    if self.Visited[self.now] == -1:
+        self.cost += 1
+        self.now = 0
+        return self.Searching[self.now]
+    if self.Visited[self.now] < self.cost:
+        self.now += 1
+        return self.Searching[self.now]
+    if self.Visited[self.now] == self.cost:
+        x, y = gameState.getPacmanState().configuration.getPosition()
+        print((x - self.start_x, y - self.start_y))
+        data = "(%d, %d)\n" % ((x - self.start_x), (y - self.start_y))
+        self.f.write(data)
+        for dir in legalMoves:
+            self.Searching.insert(self.now+1, dir)
+            self.Visited.insert(self.now+1, self.cost+1)
+            self.now += 1
+            self.Searching.insert(self.now+1, back_dir(dir))
+            self.Visited.insert(self.now+1, self.cost)
+            self.now += 1
+        self.now += 1
+        return self.Searching[self.now]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class AstarAgent(Agent):
   """
