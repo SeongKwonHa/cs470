@@ -1,0 +1,82 @@
+# 20150790
+"""
+Licensing Information: Please do not distribute or publish solutions to this
+project. You are free to use and extend Driverless Car for educational
+purposes. The Driverless Car project was developed at Stanford, primarily by
+Chris Piech (piech@cs.stanford.edu). It was inspired by the Pacman projects.
+"""
+from engine.const import Const
+import util, math
+
+# Class: ExactInference
+# ---------------------
+# Maintain and update a belief distribution over the probability of a car
+# being in a tile using exact updates (correct, but slow times).
+class ExactInference(object):
+    
+    # Function: Init
+    # --------------
+    # Constructer that initializes an ExactInference object which has
+    # numRows x numCols number of tiles.
+    def __init__(self, numRows, numCols):
+        self.belief = util.Belief(numRows, numCols)
+        ''' initialize any variables you will need later '''
+        self.transprob = util.loadTransProb()
+
+
+
+    # Function: Observe
+    # -----------------
+    # Updates beliefs based on the distance observation and your agents position.
+    # The noisyDistance is a gaussian distribution with mean of the true distance
+    # and std = Const.SONAR_NOISE_STD. The variable agentX is the x location of
+    # your car (not the one you are tracking) and agentY is your y location.
+    def observe(self, agentX, agentY, observedDist):
+        ''' your code here'''
+        NumRow = self.belief.getNumRows()
+        NumCol = self.belief.getNumCols()
+        for row in range(NumRow):
+            for col in range(NumCol):
+                mean = math.sqrt((abs(agentX - util.colToX(col))) ** 2 + (abs(agentY - util.rowToY(row))) ** 2)
+                pdf = util.pdf(mean, Const.SONAR_STD, observedDist)
+                prob = self.belief.getProb(row, col)  # prob in that position tile
+                newprob = prob * pdf  # prob in that tile and that tile's prob
+                self.belief.setProb(row, col, newprob)
+        self.belief.normalize()
+
+
+    # Function: Elapse Time
+    # ---------------------
+    # Update your inference to handle the passing of one heartbeat. Use the
+    # transition probability you created in Learner
+    def elapseTime(self):
+        ''' your code here'''
+
+        NumRow = self.belief.getNumRows()
+        NumCol = self.belief.getNumCols()
+
+        temp = {}
+        for row in range(NumRow):
+            for col in range(NumCol):
+                temp[(row, col)] = self.belief.getProb(row, col)
+
+        for row in range(NumRow):
+            for col in range(NumCol):
+                self.belief.setProb(row, col, 0)
+
+        for oldTile, newTile in self.transprob.keys():
+            val = self.transprob[(oldTile,newTile)] * temp[(oldTile[0], oldTile[1])]
+            self.belief.addProb(newTile[0], newTile[1], val)
+
+        self.belief.normalize()
+
+
+
+    # Function: Get Belief
+    # ---------------------
+    # Returns your belief of the probability that the car is in each tile. Your
+    # belief probabilities should sum to 1.
+    def getBelief(self):
+        return self.belief
+
+
